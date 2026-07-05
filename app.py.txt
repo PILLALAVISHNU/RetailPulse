@@ -1,0 +1,163 @@
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+
+st.set_page_config(
+    page_title="RetailPulse Dashboard",
+    layout="wide"
+)
+
+st.title("📊 RetailPulse")
+st.subheader("AI Powered Customer Analytics & Demand Forecasting")
+
+uploaded_file = st.file_uploader(
+    "Upload Retail CSV File",
+    type=["csv"]
+)
+
+if uploaded_file is not None:
+
+    df = pd.read_csv(uploaded_file)
+
+    st.success("Dataset Loaded Successfully!")
+
+    st.write("### Dataset Preview")
+    st.dataframe(df.head())
+
+    st.write("### Dataset Shape")
+    st.write(df.shape)
+
+    st.write("### Missing Values")
+    st.write(df.isnull().sum())
+    st.subheader("Business KPIs")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Total Records", len(df))
+col2.metric("Total Columns", len(df.columns))
+col3.metric("Missing Values", df.isnull().sum().sum())
+
+    st.write("## Dashboard Summary")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Rows", df.shape[0])
+col2.metric("Columns", df.shape[1])
+col3.metric("Missing Values", df.isnull().sum().sum())
+st.write("## Data Visualization")
+
+numeric_columns = df.select_dtypes(include=["int64", "float64"]).columns
+
+if len(numeric_columns) > 0:
+
+    column = st.selectbox(
+        "Select Numeric Column",
+        numeric_columns
+    )
+
+    fig, ax = plt.subplots(figsize=(8,4))
+
+    ax.hist(df[column], bins=20)
+
+    ax.set_title(column)
+
+    st.pyplot(fig)
+    st.subheader("Dataset Information")
+
+st.write(df.dtypes)
+st.subheader("Statistical Summary")
+
+st.dataframe(df.describe())
+st.subheader("Missing Values Chart")
+
+st.bar_chart(df.isnull().sum())
+if "Sales" in df.columns:
+
+    st.subheader("Sales Distribution")
+
+    st.bar_chart(df["Sales"])
+    numeric_columns = df.select_dtypes(include=["float64","int64"])
+
+if len(numeric_columns.columns) >= 2:
+
+    X = numeric_columns.iloc[:,0:2]
+
+    model = KMeans(
+        n_clusters=3,
+        random_state=42
+    )
+
+    df["Cluster"] = model.fit_predict(X)
+
+    st.subheader("Customer Segmentation")
+
+    st.scatter_chart(
+        df,
+        x=X.columns[0],
+        y=X.columns[1],
+        color="Cluster"
+    )
+    st.subheader("Customer Segmentation")
+    st.subheader("Business Dashboard")
+
+# Total Orders
+total_orders = len(df)
+
+# Total Sales
+if "Quantity" in df.columns and "UnitPrice" in df.columns:
+    total_sales = (df["Quantity"] * df["UnitPrice"]).sum()
+else:
+    total_sales = 0
+
+# Total Customers
+if "CustomerID" in df.columns:
+    total_customers = df["CustomerID"].nunique()
+else:
+    total_customers = 0
+
+# Average Order Value
+if total_orders > 0:
+    avg_order = total_sales / total_orders
+else:
+    avg_order = 0
+
+col1, col2 = st.columns(2)
+col3, col4 = st.columns(2)
+
+col1.metric("💰 Total Sales", f"${total_sales:,.2f}")
+col2.metric("📦 Total Orders", total_orders)
+col3.metric("👥 Total Customers", total_customers)
+col4.metric("💵 Average Order Value", f"${avg_order:,.2f}")
+
+# Check required columns
+if "Quantity" in df.columns and "UnitPrice" in df.columns:
+
+    # Remove rows with missing values
+    cluster_data = df[["Quantity", "UnitPrice"]].dropna()
+
+    # Train KMeans model
+    model = KMeans(n_clusters=3, random_state=42)
+
+    cluster_data["Cluster"] = model.fit_predict(cluster_data)
+
+    st.write("### Clustered Data")
+    st.dataframe(cluster_data.head())
+
+    st.write("### Customer Segmentation Chart")
+
+    st.scatter_chart(
+        cluster_data,
+        x="Quantity",
+        y="UnitPrice",
+        color="Cluster"
+    )
+
+else:
+    st.warning("Required columns (Quantity and UnitPrice) not found.")
+
+
+
+else:
+
+    st.info("Please upload a retail dataset.")
